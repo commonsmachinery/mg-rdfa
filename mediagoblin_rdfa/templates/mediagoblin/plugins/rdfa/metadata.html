@@ -1,0 +1,92 @@
+{# MediaGoblin plugin for embedding RDF metadata as RDFa
+#
+# Copyright 2013 Commons Machinery http://commonsmachinery.se/
+#
+# Authors: Artem Popov <artfwo@commonsmachinery.se>
+#
+# Distributed under GNU Affero GPL v3, please see LICENSE in the top dir.
+#}
+
+{% block cm_metadata %}
+
+  {% macro render_property(p) -%}
+    {% if p.resource %}
+      {# #}
+      {% if p.uri == 'http://purl.org/dc/elements/1.1/source' and not p.content %}
+        {% set content = "Link" %}
+      {% else %}
+        {% set content = p.content if p.content else p.resource %}
+      {% endif %}
+      <a property="{{p.uri}}" href="{{p.resource}}" {{'rel=%s' % p.rel if p.rel else ''}}>{{content}}</a>
+    {% else %}
+      <span property="{{p.uri}}">{{p.content}}</span>
+    {% endif %}
+  {%- endmacro %}
+
+  {% macro visible_properties(properties) -%}
+    {% for p in properties %}
+      <tr>
+        <td style="padding-right:20px;">{{p.label}}</td>
+        <td>{{render_property(p)}}</td>
+      </tr>
+    {% endfor %}
+  {%- endmacro %}
+
+  {% macro tech_properties(properties) -%}
+    {% for p in properties %}
+      <span property="{{p.uri}}"
+            {{'content=%s' % p.content if p.content else ''}}
+            {{'resource=%s' % p.resource if p.resource else ''}}
+            {{'rel=%s' % p.rel if p.rel else ''}}
+            style="display:none;"></span>
+    {% endfor %}
+  {%- endmacro %}
+
+  {% if work_metadata is defined %}
+    <h3>Summary</h3>
+    {# TODO: link the actual media here, not the preview image #}
+    <div about="{{request.app.public_store.file_url(media.media_files.preview)}}"
+         typeof="http://creativecommons.org/ns#Work">
+
+      {# include attributionURL for the remix cycle prototype #}
+      {# (it's currently used in metadata parser to pick works among) #}
+      <a rel="http://creativecommons.org/ns#attributionURL"
+         href="{{media.url_for_self(request.urlgen)}}"
+         style="display:none"></a>
+
+      <table id="rdf_properties" style="font-size:medium;">
+        <tbody>
+          {{visible_properties(work_metadata.get_display_properties())}}
+        </tbody>
+      </table>
+      {{tech_properties(work_metadata.get_tech_properties())}}
+
+      {# enumerate source works #}
+      {% if source_metadata is defined and source_metadata %}
+        <h3 style="margin:15px 0;">Source works</h3>
+        {% for source in source_metadata %}
+          {# duplicate links as rel="dc:source" for the copyRDF addon #}
+          <a rel="http://purl.org/dc/elements/1.1/source"
+             href="{{source.attributionURL.resource}}"
+             style="display:none"></a>
+          <h4 id="source_button"
+              class="button_action"
+              onclick="toggle_visibility({{loop.index}})" 
+              style="font-size:small;margin-bottom:15px;">{{source.title.content}}</h4>
+          <div id="source{{loop.index}}_properties"
+               about="{{source.attributionURL.resource}}"
+               style="display:none;margin-bottom:15px;">
+            <table style="font-size:small;">
+              <tbody>
+                {{visible_properties(source.get_display_properties())}}
+              </tbody>
+            </table>
+          </div>
+        {% endfor %}
+      {% endif %}
+      <script type="text/javascript">
+        function toggle_visibility(i) { $('#source' + i + "_properties").slideToggle("fast"); }
+      </script>
+    </div>
+  {% endif %}
+{% endblock %}
