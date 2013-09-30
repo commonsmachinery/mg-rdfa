@@ -1,6 +1,10 @@
 mg-rdfa
 =======
 
+This plugin displays RDF metadata (if present) as RDFa in both human-readable
+and machine-readable fashion. Highly experimental, only SVG images are
+currently supported.
+
 Installation
 ------------
 
