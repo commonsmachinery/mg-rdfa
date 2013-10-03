@@ -129,7 +129,7 @@ class ResourceProperties(object):
             url = self.find_property(vocab.cc.attributionURL.uri)
             name = self.find_property(vocab.cc.attributionName.uri)
             self.attribution = ResourceProperty(uri=vocab.cc.attributionName.uri,
-                label=vocab.cc.Attribution.label,
+                label="Attribution", # vocab.cc.attributionName.label
                 content=name.content,
                 resource=url.resource,
                 rel=vocab.cc.attributionURL.uri)
