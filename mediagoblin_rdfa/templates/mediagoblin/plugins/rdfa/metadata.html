@@ -45,11 +45,10 @@
   {% if work_metadata is defined %}
     <h3>Summary</h3>
     {# TODO: link the actual media here, not the preview image #}
-    <div about="{{request.app.public_store.file_url(media.media_files.preview)}}"
-         typeof="http://creativecommons.org/ns#Work">
+    <div about="#this" typeof="http://creativecommons.org/ns#Work">
 
       {# include attributionURL for the remix cycle prototype #}
-      {# (it's currently used in metadata parser to pick works among) #}
+      {# (it's currently used by mg-rdfa for picking works in an RDF doc) #}
       <a rel="http://creativecommons.org/ns#attributionURL"
          href="{{media.url_for_self(request.urlgen)}}"
          style="display:none"></a>
@@ -86,6 +85,11 @@
       {% endif %}
       <script type="text/javascript">
         function toggle_visibility(i) { $('#source' + i + "_properties").slideToggle("fast"); }
+      </script>
+      <script type="text/javascript">
+        $(document).ready(function() {
+            $(".media_image").first().attr('id', 'this');
+        });
       </script>
     </div>
   {% endif %}
