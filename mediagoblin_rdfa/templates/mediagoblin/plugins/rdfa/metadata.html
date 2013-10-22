@@ -44,14 +44,7 @@
 
   {% if work_metadata is defined %}
     <h3>Summary</h3>
-    {# TODO: link the actual media here, not the preview image #}
     <div about="#this" typeof="http://creativecommons.org/ns#Work">
-
-      {# include attributionURL for the remix cycle prototype #}
-      {# (it's currently used by mg-rdfa for picking works in an RDF doc) #}
-      <a rel="http://creativecommons.org/ns#attributionURL"
-         href="{{media.url_for_self(request.urlgen)}}"
-         style="display:none"></a>
 
       <table id="rdf_properties" style="font-size:medium;">
         <tbody>
@@ -66,14 +59,14 @@
         {% for source in source_metadata %}
           {# duplicate links as rel="dc:source" for the copyRDF addon #}
           <a rel="http://purl.org/dc/elements/1.1/source"
-             href="{{source.attributionURL.resource}}"
+             href="{{source.subject_uri}}"
              style="display:none"></a>
           <h4 id="source_button"
               class="button_action"
               onclick="toggle_visibility({{loop.index}})" 
               style="font-size:small;margin-bottom:15px;">{{source.title.content}}</h4>
           <div id="source{{loop.index}}_properties"
-               about="{{source.attributionURL.resource}}"
+               about="{{source.subject_uri}}"
                style="display:none;margin-bottom:15px;">
             <table style="font-size:small;">
               <tbody>

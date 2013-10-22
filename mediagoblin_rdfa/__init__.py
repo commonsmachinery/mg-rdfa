@@ -89,8 +89,17 @@ class ResourceProperties(object):
         vocab.dcterms.format,
     ]]
 
+    source_properties = [
+        vocab.dc.source.uri,
+        vocab.dcterms.source.uri,
+        ]
+        
+
     def __init__(self, res):
+        self.subject_uri = res.uri
         self.properties = []
+        self.sources = []
+
         for pred in res.predicates:
             # don't count structured properties at this stage
             if isinstance(pred.object, model.BlankNode):
@@ -102,7 +111,7 @@ class ResourceProperties(object):
                 label = vocab.get_term(pred.uri.ns_uri, pred.uri.local_name).label
             except LookupError:
                 _log.debug("Couldn't find a vocab Term for URI %s" % uri)
-                label = None
+                label = str(pred.uri)
             
             if isinstance(pred.object, model.LiteralNode):
                 content = str(pred.object.value)
@@ -116,6 +125,10 @@ class ResourceProperties(object):
 
             p = ResourceProperty(uri=uri, label=label, content=content, resource=resource)
             self.properties.append(p)
+
+            if uri in self.source_properties:
+                self.sources.append(pred.object)
+
 
         self.title = None
         if self.find_property(vocab.dc.title.uri):
@@ -145,11 +158,7 @@ class ResourceProperties(object):
         if self.license and not self.license.content:
             self.license.content = license_labels.get(self.license.resource, None)
         
-        # FIXME: attributionURL is currently used for about="" attributes, is that okay?
-        self.attributionURL = self.find_property(vocab.cc.attributionURL.uri)
-        #if not self.attributionURL and res.uri:
-        #    self.attributionURL = str(res.uri)
-    
+
     def find_property(self, uri):
         for p in self.properties:
             if uri == p.uri:
@@ -188,26 +197,50 @@ class ResourceProperties(object):
 
         return properties
 
+    def get_sources(self):
+        return self.sources
+
+
 def rdf_properties(doc):
     rdfs = doc.getElementsByTagNameNS("http://www.w3.org/1999/02/22-rdf-syntax-ns#", 'RDF')
 
     if not rdfs:
-        return None
+        return None, None
 
-    rdfas = []
-    # collect rdf elements, that have an attributionURL, always picking the 1st element from the 1st node
-    for i, rdf in enumerate(rdfs):
+    work_props = []
+    source_props = {}
+
+    # For each RDF section, locate any resources that are about this
+    # image (either "" for the whole image or "#id" for a specific
+    # object.)
+
+    # TODO, we should really merge all the RDF graphs into a single one
+    # before doing this.
+
+    for rdf in rdfs:
         root = parser.parse_RDFXML(doc = doc, root_element = rdf)
+        source_res = []
 
-        for j, res in enumerate(root.itervalues()):
-            if i == 0 and j == 0:
-                rdfas.append(ResourceProperties(res))
-            else:
-                properties = ResourceProperties(res)
-                if properties.attributionURL is not None:
-                    rdfas.append(properties)
+        for res in root.itervalues():
+            if res.uri == "" or str(res.uri)[0] == "#":
+                props = ResourceProperties(res)
+                work_props.append(props)
+                source_res.extend(props.get_sources())
+                        
 
-    return rdfas
+        # Add in external sources, and their sources in turn
+        while source_res:
+            s = source_res[0]
+            del source_res[0]
+            
+            if s.uri == "" or str(s.uri)[0] == "#" or s.uri in source_props:
+                continue
+
+            props = ResourceProperties(s)
+            source_props[s.uri] = props
+            source_res.extend(props.get_sources())
+
+    return work_props, source_props.values()
 
 
 def add_remix_to_context(context):
@@ -215,11 +248,17 @@ def add_remix_to_context(context):
     filename = mgg.app.public_store.get_local_path(entry.media_files['original'])
     doc = minidom.parse(filename)
 
-    works = rdf_properties(doc)
-    if works:
-        context['work_metadata'] = works[0]
-        if works[1:]:
-            context['source_metadata'] = works[1:]
+    work_props, source_props = rdf_properties(doc)
+    if work_props or source_props:
+
+        # TODO: should handle per-object properties better, now just
+        # smash them into the main object to avoid rewriting the
+        # template.
+        for p in work_props[1:]:
+            work_props[0].properties.extend(p.properties)
+        
+        context['work_metadata'] = work_props[0]
+        context['source_metadata'] = source_props
 
     return context
 
